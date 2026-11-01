@@ -1,6 +1,6 @@
 # Base de datos (Supabase / PostgreSQL)
 
-Hoy la app guarda todo en el celular con `shared_preferences`. Las pantallas no saben dónde se guardan los datos: usan `AuthRepository` (`lib/services/auth_repository.dart`) y `LeaderboardRepository` (`lib/services/leaderboard_repository.dart`). Para usar la base se escriben otras clases que cumplan esas interfaces (por ejemplo `SupabaseAuthRepository`) y se cambian en `lib/main.dart`.
+La app guarda en el celular, con `shared_preferences`, las tareas, el horario y el perfil de cada cuenta. Las cuentas, las bellotas y el ranking van a Supabase cuando la app se compila con su configuración (ver «Conectar la app»); sin ella, también se guardan en el celular. Las pantallas no saben dónde se guardan los datos: usan `AuthRepository` (`lib/services/auth_repository.dart`), `LeaderboardRepository` (`lib/services/leaderboard_repository.dart`) y `BellotasRepository` (`lib/services/bellotas_repository.dart`), y `lib/main.dart` elige la versión local o la de Supabase (`lib/services/supabase_repositories.dart`).
 
 La base es PostgreSQL en **Supabase**. La app no se conecta directo a PostgreSQL (la clave quedaría dentro del APK): habla con la API de Supabase con el paquete `supabase_flutter`, y las reglas de seguridad (RLS) de la base deciden qué puede leer o cambiar cada estudiante.
 
@@ -15,6 +15,8 @@ supabase/
                                 en un PostgreSQL normal
   local/pruebas.sql             pruebas: bellotas, compras, ranking y trampas bloqueadas
   local/probar_todo.sql         crea la base cronoedu_pruebas, carga todo y corre las pruebas
+  subir.sql                     publica el esquema y el catálogo en un proyecto nuevo de Supabase
+  app_config.json               URL del proyecto y clave publicable que usa la app al compilar
 ```
 
 ## Partes de la base
@@ -73,7 +75,7 @@ Crea (o vuelve a crear) la base `cronoedu_pruebas`, carga el esquema y el catál
 
 1. Crea un proyecto en supabase.com (plan gratis).
 2. En **SQL Editor**, pega y ejecuta `supabase/migrations/0001_esquema.sql` y luego `supabase/seed.sql` (pesa ~800 KB; si el editor no lo acepta, usa `psql` con la cadena de conexión del proyecto). **No** ejecutes `supabase/local/simular_supabase.sql`: Supabase ya trae eso.
-3. En **Project Settings → API** copia la URL del proyecto y la clave `anon` (es pública, va en la app). La clave `service_role` nunca va en la app.
+3. En **Project Settings → API Keys** copia la URL del proyecto y la clave publicable (es pública, va en la app) en `supabase/app_config.json`. La clave secreta nunca va en la app ni en el repositorio.
 
 Si se cambia el material de estudio: regenera el `.json.gz` con `tool/compactar_material.py`, luego `dart run tool/generar_semilla_sql.dart`, y vuelve a ejecutar `supabase/seed.sql`.
 

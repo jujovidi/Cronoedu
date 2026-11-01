@@ -207,10 +207,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byIcon(Icons.open_in_new_rounded), findsWidgets);
       await shot(tester, '31_material_estudio_$suffix');
-      await tester.tap(find.textContaining('Modelación ·'));
+      // Según el día de la semana la tarjeta de Modelación puede quedar fuera
+      // de la barra de tareas: se desliza hasta verla.
+      final modelacion = find.textContaining('Modelación ·');
+      await tester.scrollUntilVisible(
+        modelacion,
+        100,
+        scrollable: find.ancestor(of: find.byType(ChoiceChip).first, matching: find.byType(Scrollable)).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(modelacion);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('EMPEZAR A ESTUDIAR').first);
+      await tester.tap(find.text('EMPEZAR A ESTUDIAR').hitTestable().first);
       await tester.pumpAndSettle();
       expect(find.text('TAREA ACTIVA'), findsOneWidget);
       await shot(tester, '40_tecnicas_listo_$suffix');

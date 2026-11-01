@@ -1,6 +1,13 @@
 # CronoEdu
 
-App Flutter para estudiantes universitarios: calendario de tareas, horario semanal, técnicas de estudio (Pomodoro y Flowtime) y sugerencias según tus espacios libres. Todos los datos se guardan solo en el celular.
+App Flutter para estudiantes universitarios: calendario de tareas, horario semanal, técnicas de estudio (Pomodoro y Flowtime) y sugerencias según tus espacios libres.
+
+Funciona de dos maneras:
+
+- **Conectada a Supabase:** las cuentas, las bellotas y el ranking viven en la nube y se comparten entre estudiantes. Las tareas, el horario y el perfil se guardan en el celular.
+- **Modo local** (si se compila sin la configuración de Supabase): todo se guarda en el celular y el ranking muestra las cuentas del dispositivo junto a estudiantes de ejemplo.
+
+En los dos modos, el horario, las tareas, las sugerencias, las técnicas de estudio y la búsqueda de material funcionan sin internet.
 
 ## Cómo ejecutarla (VS Code + emulador de Android Studio)
 
@@ -11,13 +18,31 @@ App Flutter para estudiantes universitarios: calendario de tareas, horario seman
 5. Abre Android Studio → Device Manager y arranca un emulador (por ejemplo Pixel 7, API 34 o superior).
 6. En VS Code, abajo a la derecha, elige el emulador como dispositivo y presiona **F5** (o `flutter run`).
 
+Así arranca en modo local. Para conectarla a Supabase:
+
+```
+flutter run --dart-define-from-file=supabase/app_config.json
+```
+
+En VS Code también puedes elegir la configuración **CronoEdu (Supabase)** en Ejecutar y depurar. `supabase/app_config.json` solo lleva la URL del proyecto y la clave publicable, que no da permisos por sí sola; la clave secreta nunca va ahí. Ver `docs/base_de_datos.md`.
+
 Para probar la importación del horario en el emulador, arrastra tu `reporteHorario.pdf` encima de la ventana del emulador: queda en la carpeta Descargas y luego lo eliges desde Calendario → Cargar horario → Cargar horario.
+
+### Generar el APK
+
+```
+flutter build apk --release --dart-define-from-file=supabase/app_config.json
+```
+
+Queda en `build/app/outputs/flutter-apk/app-release.apk`. Si el proyecto está en una carpeta de OneDrive y la compilación falla con «Unable to delete directory» o «AccessDeniedException» en `build/`, pausa la sincronización de OneDrive mientras compilas.
 
 ## Pruebas
 
 ```
 flutter test
 ```
+
+Son 47 pruebas de la app. Las de la base de datos (35 verificaciones) se corren en un PostgreSQL local con `supabase/local/probar_todo.sql`; ver `docs/base_de_datos.md`.
 
 Incluye el lector del PDF con un reporte de ejemplo (`test/reporteHorario_ejemplo.pdf`) y un recorrido por todas las pantallas. Las capturas de `docs/capturas/` se generan con `CAPTURAS=1 flutter test --update-goldens` (en las capturas de prueba algunos textos salen como bloques y las sombras como bordes negros; en el celular se ven normales).
 
@@ -37,7 +62,10 @@ lib/
     auth_repository.dart        cuentas (interfaz + versión local)
     password_hasher.dart        hash PBKDF2 de contraseñas
     leaderboard_repository.dart ranking semanal y total (interfaz + versión local)
+    bellotas_repository.dart    interfaz del servidor de bellotas que usa AppState
+    supabase_repositories.dart  cuentas, ranking y bellotas en Supabase
     study_material_repository.dart catálogo y búsqueda del material de estudio
+    study_links.dart            búsquedas de videos y artículos para cada tarea
     planner.dart                detecta espacios libres y estima carga de cada tarea
     rewards.dart                reglas de bellotas, racha y niveles
     schedule_pdf_parser.dart    reconoce el reporteHorario de Academusoft 4.0
@@ -48,7 +76,11 @@ lib/
                                 avatar_view.dart (pixel art de animales, disfraces y efectos)
 assets/images/                  poses del mapache
 assets/data/                    catálogo de material de estudio (gzip)
-tool/compactar_material.py      genera ese catálogo
+supabase/                       esquema, catálogo, configuración y pruebas de la base de datos
+test/                           pruebas de la app y reporte de horario de ejemplo
+tool/compactar_material.py      genera el catálogo comprimido
+tool/generar_semilla_sql.dart   genera supabase/seed.sql
+docs/                           descripción de la base de datos y capturas
 ```
 
 ## Cómo se lee el horario oficial
@@ -77,12 +109,12 @@ Las Sugerencias de estudio muestran hasta 3 libros o atlas relacionados con cada
 
 ## Cuenta e inicio de sesión
 
-Al abrir la app se inicia sesión con correo o nickname y contraseña, o se crea una cuenta con nickname (el que aparece en el ranking), correo y contraseña.
+Al abrir la app se inicia sesión o se crea una cuenta con nickname (el que aparece en el ranking), correo y contraseña. Con Supabase se entra con el correo; en modo local, con el correo o el nickname.
 
-- Nickname: 3 a 15 caracteres (letras, números, `_` y `.`), único sin importar mayúsculas.
-- Contraseña: mínimo 8 caracteres con letras y números. Nunca se guarda en texto: se guarda un hash PBKDF2-HMAC-SHA256 con sal aleatoria (`lib/services/password_hasher.dart`).
-- Cada cuenta tiene sus propias tareas, horario y perfil (claves `u:<id>:...`). La primera cuenta creada en el celular se queda con los datos que ya existían de versiones anteriores.
-- Por ahora todo vive en el celular. Las pantallas solo hablan con las interfaces `AuthRepository` y `LeaderboardRepository`; para pasar a base de datos basta escribir otra implementación (ver `docs/base_de_datos.md`).
+- Nickname: 3 a 15 caracteres (letras, números, `_` y `.`), único sin importar mayúsculas. Con Supabase la regla también la aplica la base de datos.
+- Contraseña: mínimo 8 caracteres con letras y números. Nunca se guarda en texto: con Supabase la maneja Supabase Auth; en modo local se guarda un hash PBKDF2-HMAC-SHA256 con sal aleatoria (`lib/services/password_hasher.dart`).
+- Cada cuenta tiene sus propias tareas, horario y perfil en el celular (claves `u:<id>:...`). La primera cuenta creada en el celular se queda con los datos que ya existían de versiones anteriores.
+- Las pantallas solo hablan con las interfaces `AuthRepository`, `LeaderboardRepository` y `BellotasRepository`. `lib/main.dart` elige la versión de Supabase o la local según reciba o no la configuración al compilar.
 
 ## Recompensas: avatar y ranking
 
@@ -96,9 +128,13 @@ Los avatares son pixel art dibujado en código (`lib/widgets/avatar_view.dart`, 
 - Tarea completada: 15, y 10 más si es antes de su fecha y hora de entrega. Cada tarea paga una sola vez.
 - Racha: el primer ciclo de cada día da 5 por cada día seguido (máximo 25).
 - Nivel: uno cada 120 bellotas ganadas. Gastar no baja de nivel. Algunos objetos piden nivel mínimo.
-- Ranking: los puntos son las bellotas ganadas (gastarlas no resta). Hay vista "Esta semana" (se reinicia cada lunes) y "Todo el tiempo", con podio para los 3 primeros. Mientras no haya base de datos se muestran 9 estudiantes de ejemplo junto a las cuentas creadas en el celular.
+- Ranking: los puntos son las bellotas ganadas (gastarlas no resta). Hay vista "Esta semana" (se reinicia cada lunes) y "Todo el tiempo", con podio para los 3 primeros. Con Supabase, el ranking sale de las vistas de la base de datos y las bellotas las valida el servidor. En modo local se muestran 9 estudiantes de ejemplo junto a las cuentas creadas en el celular.
 
 ## Pendiente para siguientes versiones
 
+- Mostrar el aviso «Elige al menos un día» dentro del formulario de actividades: hoy queda detrás del formulario abierto.
+- Ajustar el texto del interruptor de notificaciones del Perfil, que menciona recordatorios de tareas que la app no envía.
+- Poner el logo de CronoEdu como ícono de la app (hoy usa el ícono genérico de Flutter).
+- Inicio de sesión con nickname y recuperación de contraseña desde la app cuando está conectada a Supabase.
+- Guardar las acciones hechas sin internet y mandarlas al servidor al volver la conexión.
 - Ajustar duraciones de Pomodoro y el rango horario de estudio (hoy 7:00 a 22:00).
-- Cuentas, bellotas y ranking ya pueden ir a Supabase (ver `docs/base_de_datos.md`); falta crear el proyecto, el inicio de sesión con nickname y la recuperación de contraseña desde la app.
