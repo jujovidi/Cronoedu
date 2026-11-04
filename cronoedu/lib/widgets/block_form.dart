@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../models/schedule_block.dart';
 import '../state/app_state.dart';
+import 'study_topic_fields.dart';
 import 'task_tile.dart' show confirmDelete;
 
 /// Formulario para agregar bloques semanales (clase, ocio, trabajo,
@@ -38,6 +39,8 @@ class _BlockFormState extends State<BlockForm> {
   late BlockType _type;
   late final TextEditingController _title;
   late final TextEditingController _room;
+  late final TextEditingController _topic;
+  TextEditingController? _subject;
   late Set<int> _days;
   late DayTime _start;
   late DayTime _end;
@@ -51,6 +54,7 @@ class _BlockFormState extends State<BlockForm> {
     _type = widget.type;
     _title = TextEditingController(text: b?.title ?? '');
     _room = TextEditingController(text: b?.room ?? '');
+    _topic = TextEditingController(text: b?.topic ?? '');
     _days = b != null ? {b.weekday} : {if (widget.initialWeekday != null) widget.initialWeekday!};
     _start = b?.start ?? widget.initialStart ?? const DayTime(14, 0);
     _end = b?.end ?? DayTime.fromMinutes((_start.inMinutes + 120).clamp(0, 23 * 60 + 59));
@@ -60,6 +64,7 @@ class _BlockFormState extends State<BlockForm> {
   void dispose() {
     _title.dispose();
     _room.dispose();
+    _topic.dispose();
     super.dispose();
   }
 
@@ -119,10 +124,18 @@ class _BlockFormState extends State<BlockForm> {
       if (!ok || !mounted) return;
     }
 
+    // Las sesiones de estudio se nombran por su materia; las demás no la usan.
+    final study = _type == BlockType.estudio;
+    final subject = study ? (_subject?.text.trim() ?? '') : '';
+    final topic = study ? _topic.text.trim() : '';
+    final title = study ? 'Estudio: $subject' : _title.text.trim();
+
     if (_editing) {
       final b = widget.block!
         ..type = _type
-        ..title = _title.text.trim()
+        ..title = title
+        ..subject = subject
+        ..topic = topic
         ..room = _room.text.trim()
         ..weekday = widget.block!.isOneOff ? widget.block!.weekday : _days.first
         ..start = _start
@@ -130,16 +143,27 @@ class _BlockFormState extends State<BlockForm> {
       state.updateBlock(b);
       final extra = b.isOneOff ? const <int>[] : _days.skip(1);
       if (extra.isNotEmpty) {
-        state.addBlocks(type: _type, title: b.title, weekdays: extra, start: _start, end: _end, room: b.room);
+        state.addBlocks(
+          type: _type,
+          title: b.title,
+          weekdays: extra,
+          start: _start,
+          end: _end,
+          room: b.room,
+          subject: subject,
+          topic: topic,
+        );
       }
     } else {
       state.addBlocks(
         type: _type,
-        title: _title.text,
+        title: title,
         weekdays: _days.toList()..sort(),
         start: _start,
         end: _end,
         room: _room.text,
+        subject: subject,
+        topic: topic,
       );
     }
     if (mounted) Navigator.pop(context);
@@ -177,12 +201,25 @@ class _BlockFormState extends State<BlockForm> {
                 ],
               ),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _title,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(labelText: 'Nombre', hintText: _hint, prefixIcon: Icon(_type.icon)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe un nombre' : null,
-              ),
+              if (_type == BlockType.estudio) ...[
+                SubjectAutocomplete(initial: widget.block?.studySubject ?? '', onField: (c) => _subject = c),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _topic,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(
+                    labelText: 'Tema (opcional)',
+                    hintText: 'Ej: Dinámica de sistemas',
+                    prefixIcon: Icon(Icons.topic_rounded),
+                  ),
+                ),
+              ] else
+                TextFormField(
+                  controller: _title,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: InputDecoration(labelText: 'Nombre', hintText: _hint, prefixIcon: Icon(_type.icon)),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe un nombre' : null,
+                ),
               if (_type == BlockType.clase) ...[
                 const SizedBox(height: 12),
                 TextFormField(

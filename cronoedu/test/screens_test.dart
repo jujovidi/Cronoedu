@@ -5,6 +5,8 @@ import 'package:cronoedu/models/account.dart';
 import 'package:cronoedu/models/avatar.dart';
 import 'package:cronoedu/models/schedule_block.dart';
 import 'package:cronoedu/models/task.dart';
+import 'package:cronoedu/screens/home_screen.dart';
+import 'package:cronoedu/screens/suggestions_screen.dart';
 import 'package:cronoedu/services/auth_repository.dart';
 import 'package:cronoedu/services/leaderboard_repository.dart';
 import 'package:cronoedu/services/password_hasher.dart';
@@ -199,7 +201,7 @@ void main() {
       await shot(tester, '21_horario_mes_$suffix');
 
       await goTo('Sugerencias');
-      expect(find.text('EMPEZAR A ESTUDIAR'), findsWidgets);
+      expect(find.text('Empezar a estudiar'), findsWidgets);
       await shot(tester, '30_sugerencias_$suffix');
       await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
       await tester.pumpAndSettle();
@@ -219,7 +221,7 @@ void main() {
       await tester.tap(modelacion);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('EMPEZAR A ESTUDIAR').hitTestable().first);
+      await tester.tap(find.text('Empezar a estudiar').hitTestable().first);
       await tester.pumpAndSettle();
       expect(find.text('TAREA ACTIVA'), findsOneWidget);
       await shot(tester, '40_tecnicas_listo_$suffix');
@@ -295,6 +297,82 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Módulo 2 · Tareas'), findsOneWidget);
       await shot(tester, '52_tutorial_modulo_$suffix');
+    });
+  }
+
+  for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+    final suffix = mode == ThemeMode.light ? 'claro' : 'oscuro';
+
+    testWidgets('fichas desde Inicio, sesión de estudio y explorar materia en 360 px ($suffix)', (tester) async {
+      await pumpApp(tester, mode: mode);
+      tester.view.physicalSize = const Size(360 * 2, 780 * 2); // celular angosto
+      final today = DateUtils.dateOnly(DateTime.now());
+      // Termina 23:59 para que siga pendiente sin importar la hora de la prueba.
+      state.addBlocks(
+        type: BlockType.estudio,
+        title: 'Estudio: Modelación',
+        weekdays: [today.weekday],
+        start: const DayTime(23, 0),
+        end: const DayTime(23, 59),
+        subject: 'Modelación',
+        topic: 'Dinámica de sistemas',
+      );
+      await tester.pumpAndSettle();
+
+      // Inicio: la sesión sale en la lista del día junto a las tareas (la
+      // lista se arma al desplazarse, así que se baja hasta verla).
+      final homeList = find.descendant(of: find.byType(HomeScreen), matching: find.byType(Scrollable)).first;
+      Future<void> showInHome(Finder f) => tester.scrollUntilVisible(f, 150, scrollable: homeList);
+      final session = find.text('Dinámica de sistemas');
+      await showInHome(session);
+      expect(session, findsOneWidget);
+      await shot(tester, '12_inicio_sesion_$suffix');
+
+      // Tocar una tarea pendiente abre su ficha (no la primera del carrusel).
+      final grado = find.text('Opción de Grado');
+      await showInHome(grado);
+      await tester.tap(grado);
+      await tester.pumpAndSettle();
+      expect(state.tab, AppTab.sugerencias);
+      expect(find.text('Avance anteproyecto').hitTestable(), findsOneWidget);
+
+      // Tocar la sesión abre su ficha azul con sus recomendaciones.
+      state.selectTab(AppTab.inicio);
+      await tester.pumpAndSettle();
+      await showInHome(session);
+      await tester.tap(session);
+      await tester.pumpAndSettle();
+      expect(find.text('Sesión para estudiar Dinámica de sistemas de Modelación.').hitTestable(), findsOneWidget);
+      // En 360 px el botón se acorta en vez de partirse en dos líneas.
+      expect(find.text('Estudiar').hitTestable(), findsOneWidget);
+      await shot(tester, '32_sesion_ficha_$suffix');
+      await tester.tap(find.text('Estudiar').hitTestable());
+      await tester.pumpAndSettle();
+      expect(find.text('SESIÓN DE ESTUDIO'), findsOneWidget);
+
+      // "Explorar una materia" es la última ficha y usa las clases del calendario.
+      state.selectTab(AppTab.sugerencias);
+      await tester.pumpAndSettle();
+      final explore = find.text('Explorar materia');
+      final chips = find.descendant(of: find.byType(SuggestionsScreen), matching: find.byType(ChoiceChip)).first;
+      await tester.scrollUntilVisible(
+        explore,
+        100,
+        scrollable: find.ancestor(of: chips, matching: find.byType(Scrollable)).first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(explore.hitTestable());
+      await tester.pumpAndSettle();
+      expect(find.text('Explorar una materia').hitTestable(), findsOneWidget);
+      await tester.tap(find.byType(DropdownMenu<String>));
+      await tester.pumpAndSettle();
+      final subject = state.classSubjects.first;
+      await tester.tap(find.text(subject).hitTestable().last);
+      await tester.pumpAndSettle();
+      expect(find.text('Redalyc'), findsOneWidget);
+      expect(find.text('Dialnet'), findsOneWidget);
+      await shot(tester, '33_explorar_materia_$suffix');
+      expect(tester.takeException(), isNull);
     });
   }
 

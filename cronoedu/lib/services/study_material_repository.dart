@@ -231,9 +231,10 @@ class StudyMaterialIndex {
     // Los números sueltos ("Taller 3", "ejercicios 1 a 10") no dicen nada
     // del tema y harían salir libros como "Python 3" o "Windows 10".
     String clean(String s) => s.replaceAll(_looseNumber, ' ');
-    final main = search(clean('$subject $topic'), program: career, limit: 50);
+    final pool = math.max(50, limit);
+    final main = search(clean('$subject $topic'), program: career, limit: pool);
     if (description.trim().isEmpty) return main.take(limit).toList();
-    final extra = {for (final r in search(clean(description), program: career, limit: 50)) r.material.id: r.score};
+    final extra = {for (final r in search(clean(description), program: career, limit: pool)) r.material.id: r.score};
     final merged = [for (final r in main) StudyMaterialResult(r.material, r.score + 0.5 * (extra[r.material.id] ?? 0))]
       ..sort((a, b) => b.score.compareTo(a.score));
     return merged.take(limit).toList();
@@ -273,6 +274,7 @@ class StudyMaterialLibrary {
     String description = '',
     String? career,
     int limit = 3,
+    double relative = .5,
   }) async {
     final idx = await index;
     final results = idx.forTask(subject: subject, topic: topic, description: description, career: career, limit: limit);
@@ -282,9 +284,14 @@ class StudyMaterialLibrary {
     final top = results.first.score;
     return [
       for (final r in results)
-        if (r.score >= minScore && r.score >= .5 * top) r.material,
+        if (r.score >= minScore && r.score >= relative * top) r.material,
     ];
   }
+
+  /// Todo el material relacionado con una materia (para estudiarla completa).
+  /// Acepta coincidencias más amplias que [forTask], sin bajar de [minScore].
+  Future<List<StudyMaterial>> forSubject(String subject, {String? career}) =>
+      forTask(subject: subject, career: career, limit: 200, relative: .3);
 
   /// Puntaje mínimo para mostrar un material (los buenos suelen pasar de 15).
   static const minScore = 12.0;

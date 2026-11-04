@@ -14,7 +14,7 @@ Color blockColor(BuildContext context, BlockType type) {
     BlockType.ocio => c.ocio,
     BlockType.trabajo => c.trabajo,
     BlockType.extracurricular => c.extracurricular,
-    BlockType.estudio => c.focus,
+    BlockType.estudio => c.estudio,
   };
 }
 

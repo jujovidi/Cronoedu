@@ -6,13 +6,22 @@ import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import 'formatters.dart';
 import 'mascot.dart';
+import 'study_topic_fields.dart';
 
-/// Agenda la hora sugerida en el horario y lo confirma.
-void scheduleSuggestion(BuildContext context, StudySuggestion s) {
-  context.read<AppState>().scheduleSuggestion(s);
+/// Pregunta la materia y el tema, agenda la hora sugerida y lo confirma.
+/// Devuelve false si el usuario canceló.
+Future<bool> scheduleSuggestion(BuildContext context, StudySuggestion s) async {
+  final picked = await askStudyTopic(context, subject: s.task?.subject ?? '', topic: s.task?.topic ?? '');
+  if (picked == null || !context.mounted) return false;
+  context.read<AppState>().scheduleSuggestion(s, subject: picked.subject, topic: picked.topic);
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text('Agendado en tu horario: ${slotLabel(s.start, s.end)}')));
+    ..showSnackBar(
+      SnackBar(
+        content: Text('Agendado: ${picked.subject} · ${slotLabel(s.start, s.end)}. Su ficha está en Sugerencias.'),
+      ),
+    );
+  return true;
 }
 
 /// "Procrastinar": descarta la sugerencia de ese día.

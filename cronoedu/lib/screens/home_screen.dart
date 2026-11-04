@@ -11,6 +11,7 @@ import '../widgets/avatar_view.dart';
 import '../widgets/crono_calendar.dart';
 import '../widgets/formatters.dart';
 import '../widgets/mascot.dart';
+import '../widgets/study_session_tile.dart';
 import '../widgets/suggestion_sheet.dart';
 import '../widgets/task_form.dart';
 import '../widgets/task_tile.dart';
@@ -34,6 +35,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final dayTasks = state.tasksOn(_selected);
+    final sessions = state.studySessionsOn(_selected);
+    // Tareas y sesiones de estudio del día, por hora (las tareas sin hora al final).
+    final dayItems = <(int, Widget)>[
+      for (final s in sessions) (s.block.start.inMinutes, StudySessionTile(s)),
+      for (final task in dayTasks) (task.dueTime?.inMinutes ?? 24 * 60, TaskTile(task)),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
     final pending = state.pendingByDueDate;
     final t = Theme.of(context).textTheme;
     final firstName = state.profile.name.trim().split(' ').first;
@@ -76,10 +83,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 4),
-          if (dayTasks.isEmpty)
+          if (dayItems.isEmpty)
             const EmptyState(title: 'Sin tareas este día', message: 'Toca "Agregar" para crear una tarea pendiente.')
           else
-            for (final task in dayTasks) ...[TaskTile(task), const SizedBox(height: 8)],
+            for (final item in dayItems) ...[item.$2, const SizedBox(height: 8)],
         ],
       ),
     );

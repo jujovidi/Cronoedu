@@ -59,6 +59,8 @@ class ScheduleBlock {
     this.room = '',
     this.teacher = '',
     this.group = '',
+    this.subject = '',
+    this.topic = '',
     this.date,
   });
 
@@ -73,6 +75,21 @@ class ScheduleBlock {
   String room;
   String teacher;
   String group;
+
+  /// Materia y tema de una sesión de estudio autónomo (vacíos en los demás tipos).
+  String subject;
+  String topic;
+
+  /// Materia con la que se buscan recomendaciones. Las sesiones guardadas
+  /// antes de existir [subject] usan el título sin el prefijo "Estudio: ".
+  String get studySubject {
+    if (subject.isNotEmpty) return subject;
+    final t = title.trim();
+    return t.startsWith('Estudio: ') ? t.substring(9) : t;
+  }
+
+  /// "Modelación · Dinámica de sistemas" o solo la materia.
+  String get studyLabel => topic.isEmpty ? studySubject : '$studySubject · $topic';
 
   /// Si tiene fecha, el bloque es de un solo día (ej: una sesión de estudio
   /// agendada). Si es null, se repite cada semana.
@@ -101,6 +118,8 @@ class ScheduleBlock {
     'room': room,
     'teacher': teacher,
     'group': group,
+    'subject': subject,
+    'topic': topic,
     'date': date?.toIso8601String(),
   };
 
@@ -114,8 +133,21 @@ class ScheduleBlock {
     room: (json['room'] as String?) ?? '',
     teacher: (json['teacher'] as String?) ?? '',
     group: (json['group'] as String?) ?? '',
+    subject: (json['subject'] as String?) ?? '',
+    topic: (json['topic'] as String?) ?? '',
     date: json['date'] == null ? null : DateTime.parse(json['date'] as String),
   );
+}
+
+/// Una sesión de estudio autónomo en una fecha concreta. Las semanales se
+/// repiten, así que cada semana es una ocurrencia distinta del mismo bloque.
+class StudySession {
+  const StudySession(this.block, this.day);
+  final ScheduleBlock block;
+  final DateTime day;
+
+  DateTime get start => DateTime(day.year, day.month, day.day, block.start.hour, block.start.minute);
+  DateTime get end => DateTime(day.year, day.month, day.day, block.end.hour, block.end.minute);
 }
 
 const weekdayNames = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];

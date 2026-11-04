@@ -59,16 +59,21 @@ class StudyLinks {
   };
 
   /// "Modelación · Taller 3" → "Modelación".
-  static String query(Task task) {
-    final words = '${task.subject} ${task.topic}'
+  static String query(Task task) => queryFor(task.subject, task.topic);
+
+  static String queryFor(String subject, String topic) {
+    final words = '$subject $topic'
         .split(RegExp(r'\s+'))
         .where((w) => w.isNotEmpty && int.tryParse(w) == null && !_generic.contains(w.toLowerCase()))
         .toList();
-    return words.isEmpty ? task.subject.trim() : words.join(' ');
+    return words.isEmpty ? subject.trim() : words.join(' ');
   }
 
-  static List<StudyLink> forTask(Task task) {
-    final q = query(task);
+  static List<StudyLink> forTask(Task task) => forTopic(task.subject, task.topic);
+
+  /// 2 videos y 3 artículos sobre una materia y un tema (tareas y sesiones).
+  static List<StudyLink> forTopic(String subject, String topic) {
+    final q = queryFor(subject, topic);
     return [
       StudyLink(StudyLinkKind.video, 'Explicación de $q', 'YouTube', _youtube('$q explicación')),
       StudyLink(StudyLinkKind.video, '$q: ejercicios resueltos', 'YouTube', _youtube('$q ejercicios resueltos')),
@@ -83,6 +88,53 @@ class StudyLinks {
         'Artículos de revistas sobre $q',
         'SciELO',
         Uri.https('search.scielo.org', '/', {'q': q, 'lang': 'es'}),
+      ),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Conceptos básicos de $q',
+        'Wikipedia',
+        Uri.https('es.wikipedia.org', '/w/index.php', {'search': q}),
+      ),
+    ];
+  }
+
+  /// Para estudiar una materia completa: más videos y artículos de varias
+  /// bases académicas que abren sin verificación anti-bots.
+  static List<StudyLink> forSubject(String subject) {
+    final q = queryFor(subject, '');
+    return [
+      StudyLink(StudyLinkKind.video, 'Curso completo de $q', 'YouTube', _youtube('$q curso completo')),
+      StudyLink(StudyLinkKind.video, 'Explicación de $q', 'YouTube', _youtube('$q explicación')),
+      StudyLink(StudyLinkKind.video, '$q: ejercicios resueltos', 'YouTube', _youtube('$q ejercicios resueltos')),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Artículos académicos sobre $q',
+        'Google Académico',
+        Uri.https('scholar.google.com', '/scholar', {'hl': 'es', 'q': q}),
+      ),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Revisiones y estado del arte de $q',
+        'Google Académico',
+        Uri.https('scholar.google.com', '/scholar', {'hl': 'es', 'q': '$q revisión estado del arte'}),
+      ),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Artículos de revistas sobre $q',
+        'SciELO',
+        Uri.https('search.scielo.org', '/', {'q': q, 'lang': 'es'}),
+      ),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Revistas latinoamericanas sobre $q',
+        'Redalyc',
+        Uri.https('www.redalyc.org', '/busquedaArticuloFiltros.oa', {'q': q}),
+      ),
+      StudyLink(
+        StudyLinkKind.articulo,
+        'Artículos y tesis sobre $q',
+        'Dialnet',
+        Uri.https('dialnet.unirioja.es', '/buscar/documentos', {'querysDismax.DOCUMENTAL_TODO': q}),
       ),
       StudyLink(
         StudyLinkKind.articulo,

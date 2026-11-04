@@ -44,6 +44,8 @@ class AppState extends ChangeNotifier {
 
   AppTab _tab = AppTab.inicio;
   String? _activeTaskId;
+  String? _activeSessionId;
+  String? _suggestionRequest;
   Duration _lastFocus = Duration.zero;
   Reward? _focusReward;
   Reward? _lastReward;
@@ -60,14 +62,39 @@ class AppState extends ChangeNotifier {
 
   void startStudying(Task task) {
     _activeTaskId = task.id;
+    _activeSessionId = null;
+    _tab = AppTab.tecnicas;
+    notifyListeners();
+  }
+
+  /// Sesión de estudio autónomo con la que el usuario fue a "Técnicas de estudio".
+  ScheduleBlock? get activeSession =>
+      _activeSessionId == null ? null : _blocks.where((b) => b.id == _activeSessionId).firstOrNull;
+
+  void startStudySession(ScheduleBlock block) {
+    _activeSessionId = block.id;
+    _activeTaskId = null;
     _tab = AppTab.tecnicas;
     notifyListeners();
   }
 
   void clearActiveTask() {
     _activeTaskId = null;
+    _activeSessionId = null;
     notifyListeners();
   }
+
+  /// Ficha que Sugerencias debe mostrar al abrirse (`tarea:<id>` o `sesion:<id>`).
+  String? get suggestionRequest => _suggestionRequest;
+
+  void openSuggestion(String key) {
+    _suggestionRequest = key;
+    _tab = AppTab.sugerencias;
+    notifyListeners();
+  }
+
+  /// Sugerencias ya mostró la ficha pedida.
+  void clearSuggestionRequest() => _suggestionRequest = null;
 
   // ---------- Perfil ----------
   UserProfile get profile => _profile;
@@ -403,6 +430,44 @@ class AppState extends ChangeNotifier {
     });
   }
 
+  /// Sesiones de estudio autónomo (semanales o agendadas) que caen en [day].
+  List<StudySession> studySessionsOn(DateTime day) => [
+    for (final b in blocksForDate(day))
+      if (b.type == BlockType.estudio) StudySession(b, DateUtils.dateOnly(day)),
+  ];
+
+  /// La próxima ocurrencia de cada sesión de estudio que aún no termina,
+  /// ordenadas por hora de inicio. Las semanales aparecen una sola vez.
+  List<StudySession> upcomingStudySessions({DateTime? now}) {
+    final at = now ?? DateTime.now();
+    final today = DateUtils.dateOnly(at);
+    final out = <StudySession>[];
+    for (final b in _blocks.where((b) => b.type == BlockType.estudio)) {
+      final d = b.date;
+      if (d != null) {
+        final s = StudySession(b, d);
+        if (s.end.isAfter(at)) out.add(s);
+        continue;
+      }
+      for (var i = 0; i <= 7; i++) {
+        final day = DateUtils.addDaysToDate(today, i);
+        if (day.weekday != b.weekday) continue;
+        final s = StudySession(b, day);
+        if (s.end.isAfter(at)) {
+          out.add(s);
+          break;
+        }
+      }
+    }
+    return out..sort((a, b) => a.start.compareTo(b.start));
+  }
+
+  /// Materias de las clases del calendario (para "Explorar una materia").
+  List<String> get classSubjects {
+    final set = {for (final b in _blocks.where((b) => b.type == BlockType.clase)) b.title.trim()}..remove('');
+    return set.toList()..sort();
+  }
+
   /// Bloques que chocan con el rango indicado (para avisar al usuario).
   List<ScheduleBlock> conflictsWith(int weekday, DayTime start, DayTime end, {String? ignoreId}) =>
       _blocks.where((b) => b.id != ignoreId && !b.isOneOff && b.weekday == weekday && b.overlaps(start, end)).toList();
@@ -414,6 +479,8 @@ class AppState extends ChangeNotifier {
     required DayTime start,
     required DayTime end,
     String room = '',
+    String subject = '',
+    String topic = '',
   }) {
     for (final d in weekdays) {
       _blocks.add(
@@ -425,6 +492,8 @@ class AppState extends ChangeNotifier {
           start: start,
           end: end,
           room: room.trim(),
+          subject: subject.trim(),
+          topic: topic.trim(),
         ),
       );
     }
@@ -435,6 +504,7 @@ class AppState extends ChangeNotifier {
 
   void deleteBlock(ScheduleBlock block) {
     _blocks.removeWhere((b) => b.id == block.id);
+    if (_activeSessionId == block.id) _activeSessionId = null;
     _saveBlocks();
   }
 
@@ -484,15 +554,19 @@ class AppState extends ChangeNotifier {
 
   StudySuggestion? suggestionByKey(String key) => studySuggestions.where((s) => s.key == key).firstOrNull;
 
-  /// Agenda la sugerencia en el horario como sesión de estudio de ese día.
-  ScheduleBlock scheduleSuggestion(StudySuggestion s) {
+  /// Agenda la sugerencia en el horario como sesión de estudio de ese día,
+  /// con la materia y el tema que eligió el usuario.
+  ScheduleBlock scheduleSuggestion(StudySuggestion s, {String? subject, String? topic}) {
+    final materia = (subject ?? s.task?.subject ?? '').trim();
     final block = ScheduleBlock(
       id: _uuid.v4(),
       type: BlockType.estudio,
-      title: s.task == null ? 'Estudio autónomo' : 'Estudio: ${s.task!.subject}',
+      title: materia.isEmpty ? 'Estudio autónomo' : 'Estudio: $materia',
       weekday: s.start.weekday,
       start: DayTime(s.start.hour, s.start.minute),
       end: DayTime(s.end.hour, s.end.minute),
+      subject: materia,
+      topic: (topic ?? s.task?.topic ?? '').trim(),
       date: DateUtils.dateOnly(s.start),
     );
     _blocks.add(block);

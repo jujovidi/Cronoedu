@@ -13,6 +13,7 @@ class Palette {
   static const moradoProfundo = Color(0xFF4834D4);
   static const naranjaResaltado = Color(0xFFFFB16A);
   static const azulResaltado = Color(0xFF5D9AFE);
+  static const azulEstudio = Color(0xFF2F80ED);
   static const verdeLuminoso = Color(0xFF22D39A);
   static const blancoCrema = Color(0xFFF3F4F6);
 
@@ -34,6 +35,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.ocio,
     required this.trabajo,
     required this.extracurricular,
+    required this.estudio,
   });
 
   final Color success;
@@ -46,6 +48,9 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color trabajo;
   final Color extracurricular;
 
+  /// Sesiones de estudio autónomo: azul, distinto del morado de clases y tareas.
+  final Color estudio;
+
   static const light = AppColors(
     success: Palette.verdeLogro,
     pending: Palette.rojoPendiente,
@@ -56,6 +61,7 @@ class AppColors extends ThemeExtension<AppColors> {
     ocio: Palette.naranjaCreativo,
     trabajo: Palette.grisGrafito,
     extracurricular: Palette.verdeLogro,
+    estudio: Palette.azulEstudio,
   );
 
   static const dark = AppColors(
@@ -68,6 +74,7 @@ class AppColors extends ThemeExtension<AppColors> {
     ocio: Palette.naranjaResaltado,
     trabajo: Color(0xFF8A9499),
     extracurricular: Palette.verdeLuminoso,
+    estudio: Palette.azulResaltado,
   );
 
   @override
@@ -86,6 +93,7 @@ class AppColors extends ThemeExtension<AppColors> {
       ocio: Color.lerp(ocio, other.ocio, t)!,
       trabajo: Color.lerp(trabajo, other.trabajo, t)!,
       extracurricular: Color.lerp(extracurricular, other.extracurricular, t)!,
+      estudio: Color.lerp(estudio, other.estudio, t)!,
     );
   }
 }

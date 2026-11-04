@@ -129,59 +129,67 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final color = blockColor(context, b.type);
     showModalBottomSheet(
       context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: color,
-                  child: Icon(b.type.icon, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    b.title,
-                    style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: color,
+                    child: Icon(b.type.icon, color: Colors.white),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      b.title,
+                      style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text('${b.type.label} · ${weekdayNames[b.weekday - 1]} ${b.start.format()} – ${b.end.format()}'),
+              if (b.room.isNotEmpty) Text('Salón: ${b.room}'),
+              if (b.teacher.isNotEmpty) Text('Docente: ${b.teacher}'),
+              if (b.group.isNotEmpty) Text(b.group),
+              if (b.type == BlockType.estudio) ...[
+                Text('Materia: ${b.studySubject}'),
+                if (b.topic.isNotEmpty) Text('Tema: ${b.topic}'),
               ],
-            ),
-            const SizedBox(height: 12),
-            Text('${b.type.label} · ${weekdayNames[b.weekday - 1]} ${b.start.format()} – ${b.end.format()}'),
-            if (b.room.isNotEmpty) Text('Salón: ${b.room}'),
-            if (b.teacher.isNotEmpty) Text('Docente: ${b.teacher}'),
-            if (b.group.isNotEmpty) Text(b.group),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      context.read<AppState>().deleteBlock(b);
-                    },
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    label: const Text('Eliminar'),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        context.read<AppState>().deleteBlock(b);
+                      },
+                      icon: const Icon(Icons.delete_outline_rounded),
+                      label: const Text('Eliminar'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      showBlockForm(context, block: b);
-                    },
-                    icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Editar'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        showBlockForm(context, block: b);
+                      },
+                      icon: const Icon(Icons.edit_rounded),
+                      label: const Text('Editar'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

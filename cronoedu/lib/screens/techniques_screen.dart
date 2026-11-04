@@ -92,7 +92,7 @@ class TechniquesScreen extends StatelessWidget {
               const SizedBox(height: 12),
               _StatsStrip(state: state, timer: timer),
               const SizedBox(height: 8),
-              if (state.activeTask != null) _ActiveTask(state: state),
+              if (state.activeTask != null || state.activeSession != null) _ActiveTask(state: state),
               const SizedBox(height: 12),
               AnimatedSwitcher(
                 duration: const Duration(milliseconds: 450),
@@ -271,15 +271,16 @@ class _ActiveTask extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final task = state.activeTask!;
+    final task = state.activeTask;
+    final session = state.activeSession;
     return Card(
       child: ListTile(
-        title: const Text(
-          'TAREA ACTIVA',
-          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
+        title: Text(
+          task != null ? 'TAREA ACTIVA' : 'SESIÓN DE ESTUDIO',
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1),
         ),
         subtitle: Text(
-          task.title,
+          task?.title ?? session!.studyLabel,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.w600),
